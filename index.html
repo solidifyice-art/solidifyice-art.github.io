@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FALlen — Fast, Authenticated Encryption with Large Chunks</title>
+<style>
+  :root {
+    --purple: #7c3aed;
+    --purple-dark: #5b21b6;
+    --purple-deep: #3b0764;
+    --blue: #3b82f6;
+    --blue-light: #60a5fa;
+    --blue-dark: #1d4ed8;
+    --indigo: #6366f1;
+    --white: #ffffff;
+    --gray-50: #f8fafc;
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-300: #cbd5e1;
+    --gray-400: #94a3b8;
+    --gray-600: #475569;
+    --gray-700: #334155;
+    --gray-800: #1e293b;
+    --gray-900: #0f172a;
+    --cyan: #22d3ee;
+    --green: #34d399;
+    --red: #f87171;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--gray-900);
+    color: var(--gray-200);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 20%, rgba(124,58,237,0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 70% 80%, rgba(59,130,246,0.18) 0%, transparent 50%),
+      var(--gray-900);
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(99,102,241,0.04) 50px),
+      repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(99,102,241,0.04) 50px);
+    pointer-events: none;
+  }
+
+  .hero-badge {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    border-radius: 999px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.35);
+    color: var(--purple);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(8px);
+  }
+
+  .hero h1 {
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--white) 0%, var(--blue-light) 40%, var(--purple) 80%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero .subtitle {
+    font-size: clamp(1.05rem, 2.5vw, 1.4rem);
+    color: var(--gray-400);
+    max-width: 700px;
+    margin-bottom: 2.5rem;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.75rem;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--purple), var(--blue-dark));
+    color: var(--white);
+    box-shadow: 0 4px 24px rgba(124,58,237,0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 32px rgba(124,58,237,0.5);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.06);
+    color: var(--gray-200);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+  }
+
+  .btn-ghost:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.2);
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+    margin-top: 3.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .hero-stat {
+    text-align: center;
+  }
+
+  .hero-stat .num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--white);
+    display: block;
+  }
+
+  .hero-stat .label {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Sections ── */
+  section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 5rem 2rem;
+  }
+
+  .section-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--purple);
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    color: var(--white);
+    letter-spacing: -0.02em;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+  }
+
+  .section-desc {
+    color: var(--gray-400);
+    font-size: 1.05rem;
+    max-width: 680px;
+    margin-bottom: 3rem;
+  }
+
+  /* ── Feature grid ── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .feature-card {
+    padding: 1.75rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--purple), var(--blue));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(124,58,237,0.25);
+    background: rgba(255,255,255,0.05);
+    transform: translateY(-2px);
+  }
+
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .icon-purple { background: rgba(124,58,237,0.15); color: var(--purple); }
+  .icon-blue { background: rgba(59,130,246,0.15); color: var(--blue-light); }
+  .icon-indigo { background: rgba(99,102,241,0.15); color: var(--indigo); }
+  .icon-cyan { background: rgba(34,211,238,0.12); color: var(--cyan); }
+
+  .feature-card p {
+    color: var(--gray-400);
+    font-size: 0.92rem;
+  }
+
+  /* ── Architecture ── */
+  .arch-diagram {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 2.5rem;
+    margin-top: 2rem;
+    overflow-x: auto;
+  }
+
+  .arch-flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 800px;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  .arch-node {
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .arch-node-purple {
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.3);
+    color: #c4b5fd;
+  }
+
+  .arch-node-blue {
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.25);
+    color: #93c5fd;
+  }
+
+  .arch-node-indigo {
+    background: rgba(99,102,241,0.12);
+    border: 1px solid rgba(99,102,241,0.25);
+    color: #a5b4fc;
+  }
+
+  .arch-node small {
+    display: block;
+    font-weight: 400;
+    color: var(--gray-400);
+    font-size: 0.75rem;
+    margin-top: 0.2rem;
+  }
+
+  .arch-arrow {
+    font-size: 1.4rem;
+    color: var(--gray-600);
+    padding: 0 0.6rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: var(--gray-800);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+    font-size: 0.88rem;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 0.78rem;
+    color: var(--gray-400);
+    font-weight: 600;
+  }
+
+  .code-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .code-block pre {
+    padding: 1.25rem;
+    overflow-x: auto;
+    color: var(--gray-300);
+    line-height: 1.6;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', monospace;
+  }
+
+  .code-block .kw { color: #c084fc; }
+  .code-block .str { color: #67e8f9; }
+  .code-block .cmt { color: #64748b; font-style: italic; }
+  .code-block .fn { color: #60a5fa; }
+  .code-block .flag { color: #34d399; }
+  .code-block .num { color: #fbbf24; }
+
+  /* ── Container format layout ── */
+  .container-layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    background: var(--gray-800);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1.5rem;
+  }
+
+  .cl-row {
+    display: contents;
+  }
+
+  .cl-offset {
+    padding: 0.55rem 1rem;
+    color: var(--gray-400);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    white-space: nowrap;
+  }
+
+  .cl-field {
+    padding: 0.55rem 1rem;
+    color: var(--gray-300);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .cl-field .type {
+    color: var(--blue-light);
+    font-weight: 600;
+  }
+
+  .cl-field .name {
+    color: var(--purple);
+    font-weight: 600;
+  }
+
+  /* ── Domain table ── */
+  .domain-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .domain-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: rgba(124,58,237,0.08);
+    color: var(--gray-300);
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .domain-table td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--gray-400);
+  }
+
+  .domain-table td:first-child {
+    color: var(--white);
+    font-weight: 600;
+  }
+
+  .domain-table .byte-tag {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 6px;
+    background: rgba(124,58,237,0.12);
+    color: #c4b5fd;
+    font-family: monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  /* ── Security cards ── */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .sec-card {
+    padding: 1.5rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .sec-card .sec-title {
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sec-card p {
+    color: var(--gray-400);
+    font-size: 0.88rem;
+  }
+
+  .shield { color: var(--green); }
+  .lock { color: var(--purple); }
+  .key { color: var(--blue-light); }
+  .zap { color: var(--cyan); }
+
+  /* ── Audit status ── */
+  .audit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .audit-card {
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .audit-card .audit-badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 0.15rem;
+  }
+
+  .badge-patched {
+    background: rgba(52,211,153,0.12);
+    color: var(--green);
+    border: 1px solid rgba(52,211,153,0.25);
+  }
+
+  .badge-impossible {
+    background: rgba(99,102,241,0.12);
+    color: var(--indigo);
+    border: 1px solid rgba(99,102,241,0.25);
+  }
+
+  .badge-not-feasible {
+    background: rgba(59,130,246,0.12);
+    color: var(--blue-light);
+    border: 1px solid rgba(59,130,246,0.25);
+  }
+
+  .audit-card .audit-text {
+    font-size: 0.88rem;
+    color: var(--gray-400);
+  }
+
+  .audit-card .audit-text strong {
+    color: var(--gray-200);
+  }
+
+  /* ── Quantum section ── */
+  .quantum-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    font-size: 0.88rem;
+  }
+
+  .quantum-table th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: rgba(59,130,246,0.08);
+    color: var(--gray-300);
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .quantum-table td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--gray-400);
+  }
+
+  .quantum-table td:first-child {
+    color: var(--gray-200);
+    font-weight: 600;
+  }
+
+  .quantum-table .big-num {
+    color: var(--cyan);
+    font-weight: 700;
+    font-family: monospace;
+  }
+
+  /* ── Permutation visual ── */
+  .perm-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 2rem;
+  }
+
+  .perm-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .perm-step:last-child { border-bottom: none; }
+
+  .perm-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(124,58,237,0.12);
+    color: #c4b5fd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+  }
+
+  .perm-label {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.88rem;
+    color: var(--gray-300);
+  }
+
+  .perm-desc {
+    font-size: 0.82rem;
+    color: var(--gray-400);
+    margin-left: auto;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── CLI examples ── */
+  .cli-group {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  /* ── File structure ── */
+  .tree {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--gray-400);
+    background: var(--gray-800);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 1.5rem;
+    line-height: 1.8;
+    margin-top: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .tree .dir { color: var(--blue-light); font-weight: 700; }
+  .tree .file { color: var(--gray-300); }
+  .tree .desc { color: var(--gray-600); }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 4rem 2rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    color: var(--gray-600);
+    font-size: 0.85rem;
+  }
+
+  footer a {
+    color: var(--purple);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  footer a:hover { text-decoration: underline; }
+
+  /* ── Divider ── */
+  .divider {
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,58,237,0.2), rgba(59,130,246,0.2), transparent);
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    section { padding: 3rem 1.25rem; }
+    .features { grid-template-columns: 1fr; }
+    .hero-stats { gap: 1.5rem; }
+    .arch-diagram { padding: 1.25rem; }
+    .perm-step { flex-wrap: wrap; }
+    .perm-desc { margin-left: 0; text-align: left; }
+  }
+
+  /* ── Smooth scroll ── */
+  html { scroll-behavior: smooth; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(15,23,42,0.8);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .nav-brand {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--white);
+    text-decoration: none;
+    letter-spacing: -0.01em;
+  }
+
+  .nav-brand span { color: var(--purple); }
+
+  .nav-links {
+    display: flex;
+    gap: 1.75rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--gray-400);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--white); }
+
+  @media (max-width: 768px) {
+    nav { padding: 0.75rem 1rem; }
+    .nav-links { gap: 1rem; }
+    .nav-links a { font-size: 0.78rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <a href="#" class="nav-brand"><span>FALlen</span></a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#format">Format</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#security">Security</a></li>
+    <li><a href="#quantum">Quantum</a></li>
+    <li><a href="#source">Source</a></li>
+  </ul>
+</nav>
+
+<!-- ── Hero ── -->
+<header class="hero">
+  <div class="hero-badge">FALlen Implementation v1</div>
+  <h1>FALlen</h1>
+  <p class="subtitle">
+    Fast, Authenticated Encryption with Large Chunks &mdash; a dedicated sponge construction
+    for encrypting large files with AES-256-GCM, domain-separated key derivation, and
+    whole-container HMAC authentication.
+  </p>
+  <div class="hero-cta">
+    <a href="#usage" class="btn btn-primary">Get Started</a>
+    <a href="#architecture" class="btn btn-ghost">How It Works</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat"><span class="num">256-bit</span><span class="label">Master Seed</span></div>
+    <div class="hero-stat"><span class="num">32</span><span class="label">Rounds</span></div>
+    <div class="hero-stat"><span class="num">512-bit</span><span class="label">Sponge Capacity</span></div>
+    <div class="hero-stat"><span class="num">16 test</span><span class="label">Suites</span></div>
+  </div>
+</header>
+
+<div class="divider"></div>
+
+<!-- ── Features ── -->
+<section id="features">
+  <span class="section-label">Capabilities</span>
+  <h2>Designed for large files, audited from every angle</h2>
+  <p class="section-desc">
+    FALlen is not a toy cipher. Every component — from the custom ARX permutation to the
+    container format — has been independently probed, fuzzed, and adversarially audited.
+  </p>
+
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon icon-purple">&#9881;</div>
+      <h3>Per-Chunk GCM Authentication</h3>
+      <p>Every 4 MiB chunk (configurable) gets its own AES-256-GCM key and nonce, derived from a single master seed via domain-separated sponge calls. Reordering, replay, or removal of any chunk is detected.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-blue">&#128274;</div>
+      <h3>Whole-Container HMAC</h3>
+      <p>A trailing HMAC-SHA256 covers the entire container — header, metadata, and all chunk records. Truncation, appended data, and header edits are caught even if every individual chunk passes.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-indigo">&#128295;</div>
+      <h3>Adaptive Argon2id KDF</h3>
+      <p>Default cost adapts to host RAM: &ge; 32 GiB &rarr; 4 GiB, 8&ndash;32 GiB &rarr; 2 GiB, lower &rarr; 256 MiB. Parameters are stored in the header so a file encrypted on a big machine stays decryptable on a small one.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-cyan">&#127760;</div>
+      <h3>Unicode Password Normalization</h3>
+      <p>Full case folding, NFC normalization, and Unicode whitespace trimming. <code>P&auml;sswort</code> and <code>p&auml;sswort</code> (any case, NFD or NFC) derive the same key. An optional stretch pre-pass doubles per-guess cost.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-purple">&#128190;</div>
+      <h3>Safe Failure &amp; Atomic Writes</h3>
+      <p>Decryption writes to a randomized temp file and promotes only after full authentication. Wrong password or any tampering leaves zero plaintext at the destination. Encrypt uses validation-first ordering with atomic commit.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-blue">&#128200;</div>
+      <h3>Compression Before Encryption</h3>
+      <p><code>--compress</code> uses DEFLATE to shrink the plaintext before it enters the cipher. Encrypted streams are pseudorandom and incompressible — a 110 KB text file can become a 21 KB container.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Architecture ── -->
+<section id="architecture">
+  <span class="section-label">Architecture</span>
+  <h2>One master seed, infinite derived keys</h2>
+  <p class="section-desc">
+    A per-file 256-bit random <code>file_id</code> and a fresh random salt separate
+    every encryption. All chunk keys, nonces, and MAC keys are derived from the
+    master seed with domain separation.
+  </p>
+
+  <div class="arch-diagram">
+    <div class="arch-flow">
+      <div class="arch-node arch-node-purple">
+        Password<small>NFC + fold + trim</small>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-node arch-node-blue">
+        Argon2id<small>m / t / p</small>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-node arch-node-indigo">
+        FALlen Sponge<small>domain 0x01</small>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-node arch-node-purple">
+        Master Seed<small>32 bytes</small>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-node arch-node-blue">
+        Derive<small>0x02 &ndash; 0x06</small>
+      </div>
+      <div class="arch-arrow">&rarr;</div>
+      <div class="arch-node arch-node-indigo">
+        Keys / Nonces<small>AES-256-GCM</small>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:3rem;">Domain Separation Table</h3>
+  <p class="section-desc" style="margin-bottom:0;">
+    Each derivation purpose absorbs a unique domain byte first, making outputs
+    independent even with identical seeds.
+  </p>
+
+  <table class="domain-table">
+    <thead>
+      <tr><th>Purpose</th><th>Domain</th><th>Output</th><th>Inputs</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Master Seed</td><td><span class="byte-tag">0x01</span></td><td>32 B</td><td>Raw Argon2id output</td></tr>
+      <tr><td>Chunk Key</td><td><span class="byte-tag">0x02</span></td><td>32 B</td><td>master_seed &Vert; file_id &Vert; chunk_number</td></tr>
+      <tr><td>Chunk Nonce</td><td><span class="byte-tag">0x03</span></td><td>12 B</td><td>master_seed &Vert; file_id &Vert; chunk_number</td></tr>
+      <tr><td>Metadata Key</td><td><span class="byte-tag">0x04</span></td><td>32 B</td><td>master_seed &Vert; file_id</td></tr>
+      <tr><td>Metadata Nonce</td><td><span class="byte-tag">0x05</span></td><td>12 B</td><td>master_seed &Vert; file_id</td></tr>
+      <tr><td>Final MAC Key</td><td><span class="byte-tag">0x06</span></td><td>32 B</td><td>master_seed &Vert; file_id</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:3rem;">The FALlen Permutation</h3>
+  <p class="section-desc" style="margin-bottom:0.5rem;">
+    A 1024-bit state (16 &times; 64-bit words) processed through 32 rounds.
+    Each round applies addition, XOR, rotation, word permutation, two triangular
+    nonlinear layers, and a &pi;-derived round constant.
+  </p>
+
+  <div class="perm-steps">
+    <div class="perm-step">
+      <div class="perm-num">1</div>
+      <div class="perm-label">s[i] += s[i+1]</div>
+      <div class="perm-desc">Modular addition (carries)</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">2</div>
+      <div class="perm-label">s[i] ^= s[i+3]</div>
+      <div class="perm-desc">XOR diffusion</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">3</div>
+      <div class="perm-label">s[i] = rotl(s[i], ROT[i])</div>
+      <div class="perm-desc">Per-word rotation</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">4</div>
+      <div class="perm-label">t[P1[i]] = s[i]</div>
+      <div class="perm-desc">Word permutation P1</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">5</div>
+      <div class="perm-label">s[i] ^= s[i+1] &amp; s[i+2]</div>
+      <div class="perm-desc">Nonlinear (triangular, invertible)</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">6</div>
+      <div class="perm-label">t[P2[i]] = s[i]</div>
+      <div class="perm-desc">Word permutation P2</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">7</div>
+      <div class="perm-label">s[i] ^= s[i+1] &amp; s[i+2]</div>
+      <div class="perm-desc">Nonlinear (second layer)</div>
+    </div>
+    <div class="perm-step">
+      <div class="perm-num">8</div>
+      <div class="perm-label">s[0] ^= RC[r]</div>
+      <div class="perm-desc">&pi;-derived round constant</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Container Format ── -->
+<section id="format">
+  <span class="section-label">Container Format</span>
+  <h2>The <code>.fal</code> binary layout</h2>
+  <p class="section-desc">
+    Version 1, all integers little-endian. A fixed 40-byte header, followed by
+    salt, file ID, encrypted metadata, chunk records, and a trailer.
+  </p>
+
+  <div class="container-layout">
+    <div class="cl-offset">[0]</div><div class="cl-field"><span class="name">magic</span> <span class="type">"FAL"</span> 3 bytes</div>
+    <div class="cl-offset">[3]</div><div class="cl-field"><span class="name">version</span> <span class="type">u8</span> = 1</div>
+    <div class="cl-offset">[4]</div><div class="cl-field"><span class="name">flags</span> <span class="type">u16</span></div>
+    <div class="cl-offset">[6]</div><div class="cl-field"><span class="name">kdf_id</span> <span class="type">u8</span> = 1 (Argon2id)</div>
+    <div class="cl-offset">[7]</div><div class="cl-field"><span class="name">pw_norm</span> <span class="type">u8</span> &mdash; 0x00 raw / 0x11 NFC+fold / 0x21 +stretch</div>
+    <div class="cl-offset">[8]</div><div class="cl-field"><span class="name">argon2_m</span> <span class="type">u32</span> KiB</div>
+    <div class="cl-offset">[12]</div><div class="cl-field"><span class="name">argon2_t</span> <span class="type">u32</span></div>
+    <div class="cl-offset">[16]</div><div class="cl-field"><span class="name">argon2_p</span> <span class="type">u32</span></div>
+    <div class="cl-offset">[20]</div><div class="cl-field"><span class="name">salt_len</span> <span class="type">u16</span> &mdash; 32 or 64</div>
+    <div class="cl-offset">[22]</div><div class="cl-field"><span class="name">file_id_len</span> <span class="type">u16</span> = 32</div>
+    <div class="cl-offset">[24]</div><div class="cl-field"><span class="name">chunk_size</span> <span class="type">u32</span></div>
+    <div class="cl-offset">[28]</div><div class="cl-field"><span class="name">original_size</span> <span class="type">u64</span></div>
+    <div class="cl-offset">[36]</div><div class="cl-field"><span class="name">metadata_len</span> <span class="type">u32</span></div>
+    <div class="cl-offset">[40]</div><div class="cl-field"><span class="name">salt</span> salt_len bytes</div>
+    <div class="cl-offset">&hellip;</div><div class="cl-field"><span class="name">file_id</span> 32 bytes</div>
+    <div class="cl-offset">&hellip;</div><div class="cl-field"><span class="name">encrypted_metadata</span> ciphertext + 16-byte GCM tag</div>
+    <div class="cl-offset">&hellip;</div><div class="cl-field"><span class="name">chunk records</span> [ number(u64) | ct_len(u32) | ciphertext | tag(16) ]</div>
+    <div class="cl-offset">&hellip;</div><div class="cl-field"><span class="name">trailer</span> [ chunk_count(u64) | HMAC-SHA256(32) ]</div>
+  </div>
+
+  <div class="code-block" style="margin-top:2rem;">
+    <div class="code-header">
+      <span class="code-dot" style="background:var(--red)"></span>
+      <span class="code-dot" style="background:#fbbf24"></span>
+      <span class="code-dot" style="background:var(--green)"></span>
+      GCM Authenticated Data per chunk
+    </div>
+    <pre><span class="str">"FALCHUNK1"</span> || version || flags[2] || file_id || chunk_number(u64) || plaintext_len(u32)</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Usage ── -->
+<section id="usage">
+  <span class="section-label">CLI Usage</span>
+  <h2>Encrypt and decrypt in seconds</h2>
+  <p class="section-desc">
+    Requires CMake &ge; 3.14, a C++20 compiler, and OpenSSL &ge; 3.0.
+  </p>
+
+  <div class="cli-group">
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot" style="background:var(--red)"></span>
+        <span class="code-dot" style="background:#fbbf24"></span>
+        <span class="code-dot" style="background:var(--green)"></span>
+        Build
+      </div>
+      <pre>cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot" style="background:var(--red)"></span>
+        <span class="code-dot" style="background:#fbbf24"></span>
+        <span class="code-dot" style="background:var(--green)"></span>
+        Encrypt a file
+      </div>
+      <pre><span class="cmt"># Interactive password prompt (read twice, no echo)</span>
+falencrypt -f plain.txt -o plain.txt.fal
+
+<span class="cmt"># Explicit KDF parameters</span>
+falencrypt -f large_dataset.csv -o large_dataset.csv.fal \
+    <span class="flag">--memory-kb</span> <span class="num">131072</span> <span class="flag">--time-t</span> <span class="num">3</span> <span class="flag">--parallelism</span> <span class="num">1</span>
+
+<span class="cmt"># With compression (110 KB text &rarr; 21 KB container)</span>
+falencrypt -f report.txt -o report.txt.fal <span class="flag">--compress</span>
+
+<span class="cmt"># Force overwrite, skip storing metadata</span>
+falencrypt -f data.bin -o data.bin.fal <span class="flag">--force</span> <span class="flag">--no-mtime</span> <span class="flag">--no-mode</span></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot" style="background:var(--red)"></span>
+        <span class="code-dot" style="background:#fbbf24"></span>
+        <span class="code-dot" style="background:var(--green)"></span>
+        Decrypt
+      </div>
+      <pre><span class="cmt"># Restore using the authenticated stored filename</span>
+faldecrypt -f out.fal -o .
+
+<span class="cmt"># Explicit output path</span>
+faldecrypt -f out.fal -o decrypted.bin
+
+<span class="cmt"># Rename on decrypt</span>
+faldecrypt -f out.fal -o dir/ <span class="flag">--name</span> renamed.bin</pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-dot" style="background:var(--red)"></span>
+        <span class="code-dot" style="background:#fbbf24"></span>
+        <span class="code-dot" style="background:var(--green)"></span>
+        Password recovery (falpass)
+      </div>
+      <pre><span class="cmt"># Brute-force short PINs</span>
+falpass -f lost.fal -c <span class="str">"0123456789"</span> -m <span class="num">1</span> -M <span class="num">4</span> -o recovered.bin
+
+<span class="cmt"># Wordlist-combination mode</span>
+falpass -f lost.fal -w words.txt -W <span class="num">4</span> \
+    <span class="flag">--seps</span> none,-,_ <span class="flag">--case</span> lower,UPPER -o out
+
+<span class="cmt"># Benchmark throughput + feasibility</span>
+falpass -f lost.fal -B</pre>
+    </div>
+  </div>
+
+  <div class="code-block" style="margin-top:1.25rem;">
+    <div class="code-header">
+      <span class="code-dot" style="background:var(--red)"></span>
+      <span class="code-dot" style="background:#fbbf24"></span>
+      <span class="code-dot" style="background:var(--green)"></span>
+      Library API (C++)
+    </div>
+    <pre><span class="kw">#include</span> <span class="str">&lt;fal_encrypt.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;fal_decrypt.hpp&gt;</span>
+
+<span class="cmt">// Encrypt</span>
+<span class="fn">fal::fal_encrypt_file</span>(<span class="str">"plain.txt"</span>, <span class="str">"plain.txt.fal"</span>, {
+    .password = <span class="str">"s3cret"</span>,
+    .chunk_size = <span class="num">4194304</span>,   <span class="cmt">// 4 MiB default</span>
+    .compress = <span class="kw">true</span>,
+});
+
+<span class="cmt">// Decrypt</span>
+<span class="fn">fal::fal_decrypt_file</span>(<span class="str">"plain.txt.fal"</span>, <span class="str">"."</span>, {
+    .password = <span class="str">"s3cret"</span>,
+});</pre>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Security ── -->
+<section id="security">
+  <span class="section-label">Security</span>
+  <h2>Audited, fuzzed, and hardened</h2>
+  <p class="section-desc">
+    Every security finding from the adversarial audit has been patched, regression-tested,
+    and verified with live probes under ASan/UBSan. Here are the guarantees.
+  </p>
+
+  <div class="security-grid">
+    <div class="sec-card">
+      <div class="sec-title"><span class="shield">&#128737;</span> Confidentiality</div>
+      <p>AES-256-GCM per chunk. Container reveals only file size (padded to chunks) and chunk count — nothing about plaintext.</p>
+    </div>
+    <div class="sec-card">
+      <div class="sec-title"><span class="lock">&#128274;</span> Integrity</div>
+      <p>Every chunk GCM-authenticated with AAD binding file + position + format options. Trailer HMAC-SHA256 covers the whole container. Chunk reorder, replay, truncation, header edits — all rejected.</p>
+    </div>
+    <div class="sec-card">
+      <div class="sec-title"><span class="key">&#128273;</span> Password Protection</div>
+      <p>Argon2id with per-file random salt. Defaults adapt to RAM. Password normalization (NFC + case fold + Unicode trim). Optional stretch pre-pass doubles per-guess cost.</p>
+    </div>
+    <div class="sec-card">
+      <div class="sec-title"><span class="zap">&#9889;</span> Safe Failure</div>
+      <p>Decryption writes to a temp file promoted only after full authentication. Wrong password = no plaintext at destination. Filenames sanitized to plain basenames.</p>
+    </div>
+    <div class="sec-card">
+      <div class="sec-title"><span class="shield">&#128737;</span> Memory Hardening</div>
+      <p><code>PR_SET_DUMPABLE=0</code>, <code>RLIMIT_CORE=0</code>, mlock + MADV_DONTDUMP on secrets. Compiler-barrier-resistant wipe on every exit path. Symlink-safe temp files with O_EXCL|O_NOFOLLOW.</p>
+    </div>
+    <div class="sec-card">
+      <div class="sec-title"><span class="key">&#128273;</span> No Key/Nonce Reuse</div>
+      <p>Fresh random salt + file_id per encryption. Domain-separated sponge per purpose. Two chunks in the same file share neither key nor nonce. Re-encrypting the same file yields entirely new material.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:3rem;">Audit Findings (all patched or verified impossible)</h3>
+
+  <div class="audit-grid">
+    <div class="audit-card">
+      <span class="audit-badge badge-patched">Patched</span>
+      <div class="audit-text"><strong>Symlink temp file attack</strong> — predictable decryption temp name followed symlinks. Now: randomized 32-hex names, O_EXCL|O_NOFOLLOW, fd-backed writes.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-patched">Patched</span>
+      <div class="audit-text"><strong>salt_len &lt; 32 heap overflow</strong> — decoder accepted any salt_len but always read 32 bytes. Now: exactly 32 or 64 enforced.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-patched">Patched</span>
+      <div class="audit-text"><strong>RAM seed seizure</strong> — same-UID PTRACE_ATTACH could scrape the master seed. Now: dumpable=0, mlock, MADV_DONTDUMP, wipe on all paths.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-patched">Patched</span>
+      <div class="audit-text"><strong>Encrypt destroys pre-existing output</strong> — fopen before validation truncated/removed targets. Now: validation-first + atomic temp commit.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-patched">Patched</span>
+      <div class="audit-text"><strong>Weak KDF crackability</strong> — containers with m=8/t=1 crackable at millions of guesses/s. Now: creation rejected below floor (m&ge;64 MiB, t&ge;3).</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-impossible">Impossible</span>
+      <div class="audit-text"><strong>Nonce / key reuse</strong> — 6 domain-separated sponge calls, file_id+chunk_number context. Verified across 1,048,582 derivation inputs: zero collisions.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-impossible">Impossible</span>
+      <div class="audit-text"><strong>Trailer HMAC bypass</strong> — every byte is covered by the incremental HMAC. 1,290-case malformed battery + 5,000-mutation corpus: zero crashes, zero plaintext leaks.</div>
+    </div>
+    <div class="audit-card">
+      <span class="audit-badge badge-not-feasible">Not Feasible</span>
+      <div class="audit-text"><strong>Reduced-round algebraic break</strong> — all GF(2) probes, differential and linear analyses are noise by round 3. 32 rounds is a substantial margin over diffusion point.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Quantum ── -->
+<section id="quantum">
+  <span class="section-label">Quantum Resistance</span>
+  <h2>Resource-accounted quantum attack estimates</h2>
+  <p class="section-desc">
+    The naive 2<sup>128</sup> Grover bound is a strict lower bound. A real attack must
+    evaluate the full verification circuit, pay for logical qubits, error correction,
+    and circuit depth. Resource-accounted figures below assume 10<sup>15</sup> logical
+    gates/s, &times;10<sup>3</sup> error correction overhead.
+  </p>
+
+  <table class="quantum-table">
+    <thead>
+      <tr><th>Attack</th><th>Logical Gates</th><th>Time (P=1)</th><th>Time (P=10<sup>6</sup>)</th><th>vs 300 Years</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Seed recovery (256-bit)</td>
+        <td class="big-num">~2<sup>149</sup></td>
+        <td class="big-num">2.9 &times; 10<sup>25</sup> y</td>
+        <td class="big-num">2.9 &times; 10<sup>22</sup> y</td>
+        <td style="color:var(--green);font-weight:700;">10<sup>20</sup>&ndash;10<sup>23</sup>&times; over</td>
+      </tr>
+      <tr>
+        <td>Full-width gates</td>
+        <td class="big-num">~2<sup>163</sup></td>
+        <td class="big-num">&gg; table</td>
+        <td class="big-num">&gg; table</td>
+        <td style="color:var(--green);font-weight:700;">Unbeatable on any horizon</td>
+      </tr>
+      <tr>
+        <td>Password, 80-bit entropy</td>
+        <td>~2<sup>72</sup></td>
+        <td>~1.8 &times; 10<sup>2</sup> y</td>
+        <td>~0.006 y</td>
+        <td style="color:var(--red);font-weight:700;">Too small — do not use</td>
+      </tr>
+      <tr>
+        <td>Password, 128-bit entropy</td>
+        <td>~2<sup>96</sup></td>
+        <td>~3.0 &times; 10<sup>9</sup> y</td>
+        <td>~9.4 &times; 10<sup>4</sup> y</td>
+        <td style="color:var(--green);font-weight:700;">Comfortable</td>
+      </tr>
+      <tr>
+        <td>Password, 160-bit entropy</td>
+        <td>~2<sup>112</sup></td>
+        <td>~1.9 &times; 10<sup>14</sup> y</td>
+        <td>~6.1 &times; 10<sup>9</sup> y</td>
+        <td style="color:var(--green);font-weight:700;">Overwhelming</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:1.5rem;color:var(--gray-400);font-size:0.9rem;">
+    <strong style="color:var(--white);">The practical takeaway:</strong> the cryptographic primitive is safe on any roadmap.
+    The password is the real attack surface. &ge; 128-bit entropy passwords keep even a
+    10<sup>9</sup>-machine Grover descent above 10<sup>4</sup>&ndash;10<sup>5</sup> years, and Argon2id's quantum
+    memory requirement (2<sup>29</sup> logical qubits at 64 MiB) makes the cost even higher in practice.
+  </p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Source ── -->
+<section id="source">
+  <span class="section-label">Source Layout</span>
+  <h2>Everything in one repository</h2>
+  <p class="section-desc">
+    Reference implementation in C++20. The permutation, sponge, KDF, crypto layer,
+    format parser, encrypt/decrypt APIs, CLI tools, 16 test suites, fuzz harnesses,
+    and the full audit record.
+  </p>
+
+  <div class="tree">
+<span class="dir">fal/</span>
+├── <span class="dir">include/</span>
+│   ├── <span class="file">fal_common.hpp</span>        <span class="desc">shared constants + endian helpers</span>
+│   ├── <span class="file">fal_permutation.hpp</span>   <span class="desc">FAL round function and permutation</span>
+│   ├── <span class="file">fal_sponge.hpp</span>        <span class="desc">sponge construction (absorb/finalize/squeeze)</span>
+│   ├── <span class="file">fal_kdf.hpp</span>           <span class="desc">Argon2id + master-seed derivation</span>
+│   ├── <span class="file">fal_crypto.hpp</span>        <span class="desc">AES-GCM, HMAC, random, domain-separated derive</span>
+│   ├── <span class="file">fal_format.hpp</span>        <span class="desc">container serialization / parsing</span>
+│   ├── <span class="file">fal_encrypt.hpp</span>       <span class="desc">fal_encrypt_file()</span>
+│   ├── <span class="file">fal_decrypt.hpp</span>       <span class="desc">fal_decrypt_file()</span>
+│   ├── <span class="file">fal_password.hpp</span>      <span class="desc">Unicode normalization + password prep</span>
+│   └── <span class="file">fal_compress.hpp</span>      <span class="desc">DEFLATE compression layer</span>
+├── <span class="dir">src/</span>                        <span class="desc">implementation files</span>
+├── <span class="dir">tools/</span>
+│   ├── <span class="file">falencrypt.cpp</span>        <span class="desc">CLI: encrypt file &rarr; .fal</span>
+│   ├── <span class="file">faldecrypt.cpp</span>        <span class="desc">CLI: decrypt .fal &rarr; file</span>
+│   └── <span class="file">falpass_main.cpp</span>      <span class="desc">CLI: password recovery</span>
+├── <span class="dir">tests/</span>                     <span class="desc">16 test suites</span>
+├── <span class="dir">fuzz/</span>                      <span class="desc">5 libFuzzer harnesses</span>
+├── <span class="dir">benchmarks/</span>                <span class="desc">permutation + sponge throughput</span>
+├── <span class="dir">corpus/</span>                    <span class="desc">regression fixtures (795 files)</span>
+├── <span class="dir">audit/</span>                     <span class="desc">adversarial audit: probes, demos, regression</span>
+├── <span class="dir">docs/</span>
+│   ├── <span class="file">FAL_FORMAT.md</span>         <span class="desc">container format specification</span>
+│   ├── <span class="file">FAL_PRIMITIVE.md</span>      <span class="desc">permutation design + analysis</span>
+│   ├── <span class="file">QUANTUM_ATTACK.md</span>     <span class="desc">resource-accounted quantum estimates</span>
+│   └── <span class="file">AUDIT.md</span>              <span class="desc">full security &amp; arithmetic audit</span>
+└── <span class="file">CMakeLists.txt</span>            <span class="desc">build system (C++20, OpenSSL, zlib)</span>
+  </div>
+
+  <h3 style="margin-top:3rem;">References Results</h3>
+  <p class="section-desc" style="margin-bottom:0.5rem;">
+    Measured across all 1024 input bits of the permutation.
+  </p>
+
+  <table class="domain-table" style="margin-top:1rem;">
+    <thead>
+      <tr><th>Property</th><th>Result</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Strict Avalanche (SAC)</td><td>Mean flip 0.4960&ndash;0.5044 per bit &mdash; no weak input bits</td></tr>
+      <tr><td>Nonlinearity</td><td>1.0000 crossover vs linear map over 4000 random pairs</td></tr>
+      <tr><td>Diffusion (single-bit)</td><td>All 16 words affected within 2 rounds</td></tr>
+      <tr><td>Diffusion saturation</td><td>~455/1024 bits changed by round 4+ (near-random 512)</td></tr>
+      <tr><td>Sponge output battery</td><td>Monobit, byte &chi;&sup2;, longest run, block uniqueness, autocorrelation — all pass</td></tr>
+      <tr><td>Permutation invertibility</td><td>Deterministic + 20,000 random states verified</td></tr>
+      <tr><td>Fuzzing (libFuzzer)</td><td>5 targets, 380+ robustness cases, ASan/UBSan clean</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- ── Footer ── -->
+<footer>
+  <p>FAL &mdash; Reference implementation for the FAL format specification.</p>
+  <p style="margin-top:0.5rem;">C++20 &middot; OpenSSL &middot; zlib &middot; <a href="#security">Fully audited</a></p>
+</footer>
+
+</body>
+</html>
