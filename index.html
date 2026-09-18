@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programming Quiz</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0d001a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .quiz-container {
+    background: #1a0033;
+    border: 2px solid #7b2fff;
+    border-radius: 16px;
+    max-width: 640px;
+    width: 100%;
+    padding: 40px;
+    box-shadow: 0 0 30px rgba(123, 47, 255, .3), 0 0 60px rgba(123, 47, 255, .1);
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #7b2fff, #00e5ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #a080c0;
+    margin-bottom: 30px;
+    font-size: .9rem;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: #2a0050;
+    border-radius: 3px;
+    margin-bottom: 30px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #7b2fff, #00e5ff);
+    border-radius: 3px;
+    transition: width .4s ease;
+  }
+
+  .question-number {
+    font-size: .85rem;
+    color: #00e5ff;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  .question-text {
+    font-size: 1.15rem;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .options { display: flex; flex-direction: column; gap: 12px; }
+
+  .option-btn {
+    background: #2a0050;
+    border: 2px solid #5a1a9e;
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all .2s;
+  }
+
+  .option-btn:hover:not(.disabled) {
+    border-color: #00e5ff;
+    background: #3a0070;
+  }
+
+  .option-btn.correct {
+    border-color: #00e5ff;
+    background: rgba(0, 229, 255, .15);
+    color: #00e5ff;
+  }
+
+  .option-btn.wrong {
+    border-color: #ff4081;
+    background: rgba(255, 64, 129, .15);
+    color: #ff4081;
+  }
+
+  .option-btn.disabled { cursor: default; pointer-events: none; }
+
+  .next-btn {
+    display: none;
+    margin-top: 28px;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #7b2fff, #5a0fff);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+
+  .next-btn:hover { opacity: .85; }
+
+  .result {
+    text-align: center;
+    display: none;
+  }
+
+  .result h2 {
+    font-size: 1.6rem;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #7b2fff, #00e5ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .score-circle {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    border: 4px solid #00e5ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto;
+    background: rgba(0, 229, 255, .08);
+  }
+
+  .score-circle .big { font-size: 2.4rem; font-weight: 700; color: #00e5ff; }
+  .score-circle .small { font-size: .8rem; color: #a080c0; }
+
+  .message { color: #c0a0e0; margin: 16px 0 28px; line-height: 1.5; }
+
+  .restart-btn {
+    padding: 14px 40px;
+    border: 2px solid #7b2fff;
+    border-radius: 10px;
+    background: transparent;
+    color: #7b2fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+  }
+
+  .restart-btn:hover { background: #7b2fff; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="quiz-container">
+  <h1>C++ / Python / Java Quiz</h1>
+  <p class="subtitle">Test your programming knowledge in 10 questions</p>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
+
+  <div id="quiz">
+    <p class="question-number" id="qNum"></p>
+    <p class="question-text" id="qText"></p>
+    <div class="options" id="options"></div>
+    <button class="next-btn" id="nextBtn">Next</button>
+  </div>
+
+  <div class="result" id="result">
+    <h2>Quiz Complete!</h2>
+    <div class="score-circle">
+      <span class="big" id="scoreNum"></span>
+      <span class="small">out of 10</span>
+    </div>
+    <p class="message" id="scoreMsg"></p>
+    <button class="restart-btn" onclick="restart()">Play Again</button>
+  </div>
+</div>
+
+<script>
+const questions = [
+  {
+    q: "Which keyword is used to define a class in C++?",
+    opts: ["struct", "class", "object", "define"],
+    a: 1
+  },
+  {
+    q: "What is the output of `print(type([]))` in Python?",
+    opts: ["<class 'tuple'>", "<class 'list'>", "<class 'array'>", "<class 'dict'>"],
+    a: 1
+  },
+  {
+    q: "In Java, which method is the entry point of a program?",
+    opts: ["start()", "run()", "main()", "init()"],
+    a: 2
+  },
+  {
+    q: "Which of the following is a valid C++ pointer declaration?",
+    opts: ["int ptr^;", "int *ptr;", "int &ptr;", "pointer int ptr;"],
+    a: 1
+  },
+  {
+    q: "What does `len(\"hello\")` return in Python?",
+    opts: ["4", "5", "6", "Error"],
+    a: 1
+  },
+  {
+    q: "Which access modifier makes a member accessible only within its own class in Java?",
+    opts: ["public", "protected", "private", "default"],
+    a: 2
+  },
+  {
+    q: "What is the correct way to include a header file in C++?",
+    opts: ['#include <iostream>', '#import <iostream>', 'require iostream', 'using iostream'],
+    a: 0
+  },
+  {
+    q: "Which of these is NOT a valid Python variable name?",
+    opts: ["_count", "count2", "2count", "__name"],
+    a: 2
+  },
+  {
+    q: "How do you create an array of size 5 in Java?",
+    opts: ["int[] arr = new int(5);", "int[] arr = new int[5];", "int arr[5];", "array int[5] arr;"],
+    a: 1
+  },
+  {
+    q: "What is the output of `print(3 ** 2)` in Python?",
+    opts: ["6", "9", "5", "Error"],
+    a: 1
+  }
+];
+
+let current = 0;
+let score = 0;
+
+function loadQuestion() {
+  const q = questions[current];
+  document.getElementById("qNum").textContent = `Question ${current + 1} of ${questions.length}`;
+  document.getElementById("qText").textContent = q.q;
+  document.getElementById("progress").style.width = ((current) / questions.length * 100) + "%";
+  document.getElementById("nextBtn").style.display = "none";
+
+  const container = document.getElementById("options");
+  container.innerHTML = "";
+
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(i, btn);
+    container.appendChild(btn);
+  });
+}
+
+function selectAnswer(i, btn) {
+  const q = questions[current];
+  const allBtns = document.querySelectorAll(".option-btn");
+  allBtns.forEach(b => b.classList.add("disabled"));
+
+  if (i === q.a) {
+    btn.classList.add("correct");
+    score++;
+  } else {
+    btn.classList.add("wrong");
+    allBtns[q.a].classList.add("correct");
+  }
+
+  document.getElementById("nextBtn").style.display = "block";
+  document.getElementById("nextBtn").textContent =
+    current === questions.length - 1 ? "See Results" : "Next";
+}
+
+document.getElementById("nextBtn").onclick = () => {
+  current++;
+  if (current < questions.length) {
+    loadQuestion();
+  } else {
+    showResult();
+  }
+};
+
+function showResult() {
+  document.getElementById("quiz").style.display = "none";
+  document.getElementById("result").style.display = "block";
+  document.getElementById("progress").style.width = "100%";
+  document.getElementById("scoreNum").textContent = score;
+
+  let msg;
+  if (score === 10) msg = "Perfect score! You're a polyglot programmer!";
+  else if (score >= 7) msg = "Great job! You know your languages well.";
+  else if (score >= 4) msg = "Not bad! Keep practicing across all three languages.";
+  else msg = "Time to hit the docs! C++, Python, and Java all have great resources.";
+  document.getElementById("scoreMsg").textContent = msg;
+}
+
+function restart() {
+  current = 0;
+  score = 0;
+  document.getElementById("quiz").style.display = "block";
+  document.getElementById("result").style.display = "none";
+  loadQuestion();
+}
+
+loadQuestion();
+</script>
+</body>
+</html>
